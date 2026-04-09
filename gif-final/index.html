@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GIF Studio — 视频转动图工具</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --bg:#08080b;
+  --s1:#101014;
+  --s2:#18181e;
+  --s3:#222228;
+  --bd:#2e2e38;
+  --bd2:#3e3e50;
+  --acc:#f0a020;
+  --acc2:#ff6030;
+  --txt:#dddde8;
+  --dim:#6868788;
+  --mid:#9898aa;
+  --grn:#22d45e;
+  --red:#ef4444;
+  --tl-h:128px;
+}
+
+body{
+  background:var(--bg);
+  color:var(--txt);
+  font-family:'IBM Plex Mono',monospace;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  user-select:none;
+}
+
+/* ───── Header ───── */
+header{
+  display:flex;
+  align-items:center;
+  padding:0 20px;
+  height:48px;
+  border-bottom:1px solid var(--bd);
+  background:var(--s1);
+  gap:20px;
+  flex-shrink:0;
+}
+.logo{
+  font-family:'Syne',sans-serif;
+  font-size:17px;
+  font-weight:800;
+  letter-spacing:-0.5px;
+  color:var(--acc);
+  white-space:nowrap;
+}
+.logo em{color:var(--mid);font-style:normal;font-weight:400}
+.file-chip{
+  font-size:11px;
+  color:var(--mid);
+  flex:1;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.kbd{
+  font-size:9px;
+  color:var(--dim);
+  background:var(--s3);
+  border:1px solid var(--bd);
+  border-radius:3px;
+  padding:2px 5px;
+}
+.hdr-btn{
+  background:var(--s3);
+  border:1px solid var(--bd);
+  color:var(--txt);
+  padding:5px 14px;
+  border-radius:4px;
+  cursor:pointer;
+  font-family:inherit;
+  font-size:11px;
+  transition:border-color .15s;
+  white-space:nowrap;
+}
+.hdr-btn:hover{border-color:var(--acc);color:var(--acc)}
+
+/* ───── Drop Zone ───── */
+#drop-zone{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  cursor:pointer;
+  border:1.5px dashed var(--bd2);
+  margin:32px;
+  border-radius:10px;
+  transition:all .2s;
+  position:relative;
+  overflow:hidden;
+}
+#drop-zone::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:radial-gradient(ellipse at center, rgba(240,160,32,0.04) 0%, transparent 70%);
+  pointer-events:none;
+}
+#drop-zone:hover,#drop-zone.drag-over{
+  border-color:var(--acc);
+  background:rgba(240,160,32,0.04);
+}
+#drop-zone .dz-icon{font-size:52px;line-height:1}
+#drop-zone h2{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--txt)}
+#drop-zone p{font-size:12px;color:var(--mid)}
+#drop-zone .dz-sub{color:var(--acc);font-size:11px;margin-top:4px}
+
+/* ───── Main App ───── */
+#app{
+  flex:1;
+  flex-direction:column;
+  overflow:hidden;
+  display:none;
+}
+
+.workspace{
+  flex:1;
+  display:flex;
+  overflow:hidden;
+}
+
+/* ───── Preview Panel ───── */
+.preview-wrap{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  background:#000;
+  position:relative;
+  min-width:0;
+}
+#preview-video{
+  flex:1;
+  width:100%;
+  object-fit:contain;
+  display:block;
+  min-height:0;
+}
+.preview-overlay{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.range-badge{
+  background:rgba(0,0,0,0.75);
+  border:1px solid var(--acc);
+  color:var(--acc);
+  font-size:10px;
+  padding:4px 10px;
+  border-radius:20px;
+  letter-spacing:.5px;
+  opacity:0;
+  transition:opacity .3s;
+}
+.range-badge.visible{opacity:1}
+
+.preview-bar{
+  display:flex;
+  align-items:center;
+  padding:8px 14px;
+  gap:8px;
+  background:rgba(0,0,0,0.85);
+  backdrop-filter:blur(8px);
+  border-top:1px solid rgba(255,255,255,0.06);
+  flex-shrink:0;
+}
+.pc{
+  background:rgba(255,255,255,0.08);
+  border:none;
+  color:#fff;
+  width:30px;
+  height:30px;
+  border-radius:4px;
+  cursor:pointer;
+  font-size:13px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:background .15s;
+  flex-shrink:0;
+}
+.pc:hover{background:rgba(255,255,255,0.15)}
+.pc.active{background:var(--acc);color:#000}
+#btn-play{width:36px;height:36px;font-size:15px;border-radius:50%}
+.time-disp{
+  font-size:12px;
+  color:rgba(255,255,255,0.6);
+  margin-left:auto;
+  letter-spacing:.5px;
+}
+.sep{width:1px;height:20px;background:rgba(255,255,255,0.1);margin:0 2px}
+
+/* ───── Side Panel ───── */
+.side{
+  width:250px;
+  flex-shrink:0;
+  border-left:1px solid var(--bd);
+  background:var(--s1);
+  display:flex;
+  flex-direction:column;
+  overflow-y:auto;
+  overflow-x:hidden;
+}
+.sect{
+  padding:14px 16px;
+  border-bottom:1px solid var(--bd);
+}
+.sect-title{
+  font-size:9px;
+  letter-spacing:1.8px;
+  color:var(--mid);
+  text-transform:uppercase;
+  margin-bottom:10px;
+}
+.ir{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:11px;
+  color:var(--mid);
+  margin-bottom:5px;
+}
+.ir b{color:var(--txt);font-weight:500}
+
+.pt-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.pt-btn{
+  background:var(--s2);
+  border:1px solid var(--bd);
+  color:var(--txt);
+  padding:7px 0;
+  border-radius:4px;
+  cursor:pointer;
+  font-family:inherit;
+  font-size:10px;
+  text-align:center;
+  transition:all .15s;
+}
+.pt-btn:hover{border-color:var(--acc);color:var(--acc)}
+.pt-btn.in{border-left:2px solid var(--grn)}
+.pt-btn.out{border-left:2px solid var(--red)}
+
+.out-box{
+  background:var(--s2);
+  border:1px solid var(--bd);
+  border-radius:5px;
+  padding:10px 12px;
+}
+.out-box .ob-label{
+  font-size:9px;
+  letter-spacing:1.2px;
+  color:var(--acc);
+  text-transform:uppercase;
+  margin-bottom:8px;
+}
+
+.prog-wrap{
+  padding:0 16px 8px;
+  display:none;
+}
+.prog-bar{
+  height:3px;
+  background:var(--s3);
+  border-radius:2px;
+  overflow:hidden;
+  margin-bottom:5px;
+}
+.prog-fill{
+  height:100%;
+  background:linear-gradient(90deg, var(--acc), var(--acc2));
+  border-radius:2px;
+  transition:width .15s;
+  width:0;
+}
+.prog-label{font-size:10px;color:var(--mid);text-align:center}
+
+.export-wrap{padding:12px 16px}
+.btn-export{
+  width:100%;
+  padding:13px;
+  background:var(--acc);
+  color:#000;
+  border:none;
+  border-radius:5px;
+  font-family:inherit;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  letter-spacing:.3px;
+  transition:all .15s;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+.btn-export:hover{background:#ffc040;transform:translateY(-1px)}
+.btn-export:active{transform:translateY(0)}
+.btn-export:disabled{background:var(--s3);color:var(--mid);cursor:not-allowed;transform:none}
+
+/* ───── Timeline ───── */
+.tl-wrap{
+  height:var(--tl-h);
+  border-top:1px solid var(--bd);
+  background:var(--s1);
+  display:flex;
+  flex-direction:column;
+  flex-shrink:0;
+}
+.tl-bar{
+  display:flex;
+  align-items:center;
+  padding:0 14px;
+  height:30px;
+  gap:8px;
+  border-bottom:1px solid var(--bd);
+  flex-shrink:0;
+}
+.tl-label{font-size:9px;letter-spacing:1.5px;color:var(--mid);text-transform:uppercase}
+.sel-info{font-size:10px;color:var(--acc);margin-left:4px}
+.z-btn{
+  background:var(--s2);
+  border:1px solid var(--bd);
+  color:var(--txt);
+  width:22px;height:22px;
+  border-radius:3px;
+  cursor:pointer;
+  font-size:13px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+  margin-left:auto;
+}
+.z-btn:hover{border-color:var(--acc);color:var(--acc)}
+#timeline-canvas{
+  flex:1;
+  display:block;
+  width:100%;
+  cursor:crosshair;
+}
+
+/* ───── Scrollbar ───── */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--s1)}
+::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">GIF<em>studio</em></div>
+  <div class="file-chip" id="file-chip">拖入或点击导入视频文件</div>
+  <span class="kbd">I</span><span style="font-size:10px;color:var(--mid)">入点</span>
+  <span class="kbd">O</span><span style="font-size:10px;color:var(--mid)">出点</span>
+  <span class="kbd">Space</span><span style="font-size:10px;color:var(--mid)">播放</span>
+  <input type="file" id="file-input" accept="video/*" style="display:none">
+  <button class="hdr-btn" onclick="document.getElementById('file-input').click()">＋ 导入视频</button>
+</header>
+
+<div id="drop-zone">
+  <div class="dz-icon">🎬</div>
+  <h2>导入视频文件</h2>
+  <p>支持 MP4 · MOV · WebM · AVI 等格式</p>
+  <p>最高 4K 分辨率 · 60fps</p>
+  <p class="dz-sub">点击此处或拖入文件</p>
+</div>
+
+<div id="app">
+  <div class="workspace">
+
+    <!-- Video Preview -->
+    <div class="preview-wrap">
+      <video id="preview-video" playsinline></video>
+      <div class="preview-overlay">
+        <div class="range-badge" id="range-badge">◉ 循环预览选区</div>
+      </div>
+      <div class="preview-bar">
+        <button class="pc" id="btn-goto-in" title="跳到入点 (Shift+I)">⏮</button>
+        <button class="pc" id="btn-play" title="播放/暂停 (Space)">▶</button>
+        <button class="pc" id="btn-goto-out" title="跳到出点 (Shift+O)">⏭</button>
+        <div class="sep"></div>
+        <button class="pc" id="btn-preview-range" title="循环预览选区 (P)">🔁</button>
+        <button class="pc" id="btn-frame-back" title="后退一帧 (←)">←</button>
+        <button class="pc" id="btn-frame-fwd" title="前进一帧 (→)">→</button>
+        <div class="time-disp" id="time-disp">0:00.000</div>
+      </div>
+    </div>
+
+    <!-- Side Panel -->
+    <div class="side">
+      <div class="sect">
+        <div class="sect-title">视频信息</div>
+        <div class="ir"><span>分辨率</span><b id="i-res">—</b></div>
+        <div class="ir"><span>帧率</span><b id="i-fps">—</b></div>
+        <div class="ir"><span>总时长</span><b id="i-dur">—</b></div>
+        <div class="ir"><span>文件大小</span><b id="i-sz">—</b></div>
+      </div>
+
+      <div class="sect">
+        <div class="sect-title">范围选择</div>
+        <div class="pt-grid">
+          <button class="pt-btn in" id="btn-set-in">设入点 [</button>
+          <button class="pt-btn out" id="btn-set-out">设出点 ]</button>
+        </div>
+        <div class="ir"><span>入点</span><b id="i-in">—</b></div>
+        <div class="ir"><span>出点</span><b id="i-out">—</b></div>
+        <div class="ir"><span>选区时长</span><b id="i-sel">—</b></div>
+      </div>
+
+      <div class="sect">
+        <div class="sect-title">导出参数（自动优化）</div>
+        <div class="out-box">
+          <div class="ob-label">GIF 输出预估</div>
+          <div class="ir"><span>输出帧率</span><b id="o-fps">—</b></div>
+          <div class="ir"><span>输出尺寸</span><b id="o-dim">—</b></div>
+          <div class="ir"><span>总帧数</span><b id="o-frm">—</b></div>
+          <div class="ir"><span>上限大小</span><b style="color:var(--acc)">≤ 10 MB</b></div>
+        </div>
+      </div>
+
+      <div class="prog-wrap" id="prog-wrap">
+        <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+        <div class="prog-label" id="prog-label">准备中...</div>
+      </div>
+
+      <div class="export-wrap" style="margin-top:auto">
+        <button class="btn-export" id="btn-export">
+          <span>⬇</span> 导出 GIF
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="tl-wrap">
+    <div class="tl-bar">
+      <span class="tl-label">时间线</span>
+      <span class="sel-info" id="sel-info"></span>
+      <button class="z-btn" id="zoom-out" title="缩小">−</button>
+      <button class="z-btn" id="zoom-fit" title="适应全部">⊡</button>
+      <button class="z-btn" id="zoom-sel" title="适应选区">⊠</button>
+      <button class="z-btn" id="zoom-in" title="放大">＋</button>
+    </div>
+    <canvas id="timeline-canvas"></canvas>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let video = null;
+let vidDur = 0, vidW = 0, vidH = 0;
+let fileSize = 0;
+let inPt = 0, outPt = 0;
+let curTime = 0;
+let loopRange = false;
+let isPlaying = false;
+let thumbnails = [];          // [{time, bmp}]
+let thumbCanvas, thumbCtx;
+
+// Timeline view
+let vStart = 0, vEnd = 10;   // visible time window
+let drag = null;              // active drag
+const HANDLE_HIT = 9;        // px hit radius for handles
+
+// ═══════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════
+const fmt = s => {
+  const m = Math.floor(s / 60);
+  const sec = (s - m * 60).toFixed(3).padStart(6,'0');
+  return `${m}:${sec}`;
+};
+const fmtShort = s => {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${String(sec).padStart(2,'0')}`;
+};
+const clamp = (v,lo,hi) => Math.max(lo, Math.min(hi, v));
+const lerp = (a,b,t) => a + (b-a)*t;
+
+const canvas = document.getElementById('timeline-canvas');
+const ctx = canvas.getContext('2d');
+
+const timeToX = t => ((t - vStart) / (vEnd - vStart)) * canvas.width;
+const xToTime = x => vStart + (x / canvas.width) * (vEnd - vStart);
+
+// ═══════════════════════════════════════════════
+//  FILE LOADING
+// ═══════════════════════════════════════════════
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('click', () => fileInput.click());
+['dragover','dragenter'].forEach(ev => dropZone.addEventListener(ev, e => {
+  e.preventDefault(); dropZone.classList.add('drag-over');
+}));
+['dragleave','dragend'].forEach(ev => dropZone.addEventListener(ev, () =>
+  dropZone.classList.remove('drag-over')
+));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+function loadFile(file) {
+  if (!file.type.startsWith('video/')) { alert('请选择视频文件'); return; }
+  fileSize = file.size;
+  document.getElementById('i-sz').textContent = (fileSize/1024/1024).toFixed(1)+' MB';
+  document.getElementById('file-chip').textContent = file.name;
+
+  const url = URL.createObjectURL(file);
+  video = document.getElementById('preview-video');
+  video.src = url;
+  video.load();
+
+  video.addEventListener('loadedmetadata', onVideoReady, { once: true });
+  video.addEventListener('timeupdate', onTimeUpdate);
+  video.addEventListener('play', () => { isPlaying=true; document.getElementById('btn-play').textContent='⏸'; });
+  video.addEventListener('pause', () => {
+    isPlaying=false; document.getElementById('btn-play').textContent='▶';
+    if (loopRange) { loopRange=false; document.getElementById('btn-preview-range').classList.remove('active'); document.getElementById('range-badge').classList.remove('visible'); }
+  });
+}
+
+function onVideoReady() {
+  vidDur = video.duration;
+  vidW = video.videoWidth;
+  vidH = video.videoHeight;
+  inPt = 0; outPt = vidDur;
+  vStart = 0; vEnd = vidDur;
+
+  document.getElementById('i-res').textContent = `${vidW} × ${vidH}`;
+  document.getElementById('i-fps').textContent = '30 fps';
+  document.getElementById('i-dur').textContent = fmt(vidDur);
+
+  dropZone.style.display = 'none';
+  const appEl = document.getElementById('app');
+  appEl.style.display = 'flex';
+
+  thumbCanvas = document.createElement('canvas');
+  thumbCanvas.width = 160;
+  thumbCanvas.height = Math.round(160 * vidH / vidW) || 90;
+  thumbCtx = thumbCanvas.getContext('2d');
+
+  resizeCanvas();
+  updateUI();
+  extractThumbnails();
+}
+
+function onTimeUpdate() {
+  curTime = video.currentTime;
+  document.getElementById('time-disp').textContent = fmt(curTime);
+  if (loopRange && curTime >= outPt) video.currentTime = inPt;
+  drawTimeline();
+}
+
+// ═══════════════════════════════════════════════
+//  THUMBNAIL EXTRACTION
+// ═══════════════════════════════════════════════
+async function extractThumbnails() {
+  thumbnails = [];
+  const interval = Math.max(vidDur / 100, 0.25);
+  for (let t = 0; t < vidDur; t += interval) {
+    await seekTo(video, t);
+    thumbCtx.drawImage(video, 0, 0, thumbCanvas.width, thumbCanvas.height);
+    try {
+      const bmp = await createImageBitmap(thumbCanvas);
+      thumbnails.push({ time: t, bmp });
+    } catch(_) {}
+    drawTimeline();
+  }
+  // restore
+  if (video) video.currentTime = inPt;
+}
+
+function seekTo(vid, t) {
+  return new Promise(resolve => {
+    if (Math.abs(vid.currentTime - t) < 0.02) { resolve(); return; }
+    vid.currentTime = t;
+    const h = () => { vid.onseeked = null; resolve(); };
+    vid.onseeked = h;
+    setTimeout(h, 500); // fallback
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════════════
+document.getElementById('btn-play').addEventListener('click', () => {
+  if (!video) return;
+  loopRange = false;
+  document.getElementById('btn-preview-range').classList.remove('active');
+  document.getElementById('range-badge').classList.remove('visible');
+  video.paused ? video.play() : video.pause();
+});
+
+document.getElementById('btn-goto-in').addEventListener('click', () => { if(video){video.currentTime=inPt;} });
+document.getElementById('btn-goto-out').addEventListener('click', () => { if(video){video.currentTime=outPt;} });
+
+document.getElementById('btn-preview-range').addEventListener('click', () => {
+  if(!video) return;
+  loopRange = !loopRange;
+  document.getElementById('btn-preview-range').classList.toggle('active', loopRange);
+  document.getElementById('range-badge').classList.toggle('visible', loopRange);
+  if (loopRange) { video.currentTime = inPt; video.play(); }
+});
+
+document.getElementById('btn-frame-back').addEventListener('click', () => {
+  if(!video) return;
+  video.currentTime = Math.max(0, video.currentTime - 1/30);
+});
+document.getElementById('btn-frame-fwd').addEventListener('click', () => {
+  if(!video) return;
+  video.currentTime = Math.min(vidDur, video.currentTime + 1/30);
+});
+
+document.getElementById('btn-set-in').addEventListener('click', () => {
+  if(!video) return;
+  inPt = clamp(curTime, 0, outPt - 0.1);
+  updateUI(); drawTimeline();
+});
+document.getElementById('btn-set-out').addEventListener('click', () => {
+  if(!video) return;
+  outPt = clamp(curTime, inPt + 0.1, vidDur);
+  updateUI(); drawTimeline();
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (!video) return;
+  if (e.target.tagName === 'INPUT') return;
+  switch(e.code) {
+    case 'Space': e.preventDefault();
+      loopRange = false;
+      document.getElementById('btn-preview-range').classList.remove('active');
+      document.getElementById('range-badge').classList.remove('visible');
+      video.paused ? video.play() : video.pause(); break;
+    case 'KeyI': inPt = clamp(curTime,0,outPt-0.1); updateUI(); drawTimeline(); break;
+    case 'KeyO': outPt = clamp(curTime,inPt+0.1,vidDur); updateUI(); drawTimeline(); break;
+    case 'KeyP': document.getElementById('btn-preview-range').click(); break;
+    case 'ArrowLeft': e.preventDefault(); video.currentTime = Math.max(0, video.currentTime - (e.shiftKey?1:1/30)); break;
+    case 'ArrowRight': e.preventDefault(); video.currentTime = Math.min(vidDur, video.currentTime + (e.shiftKey?1:1/30)); break;
+  }
+});
+
+// Zoom buttons
+document.getElementById('zoom-in').addEventListener('click', () => {
+  const c=(vStart+vEnd)/2, d=(vEnd-vStart)*0.55;
+  vStart=clamp(c-d/2,0,vidDur-d); vEnd=vStart+d; drawTimeline();
+});
+document.getElementById('zoom-out').addEventListener('click', () => {
+  const c=(vStart+vEnd)/2, d=Math.min((vEnd-vStart)*1.6,vidDur);
+  vStart=clamp(c-d/2,0,vidDur-d); vEnd=vStart+d; drawTimeline();
+});
+document.getElementById('zoom-fit').addEventListener('click', () => {
+  vStart=0; vEnd=vidDur; drawTimeline();
+});
+document.getElementById('zoom-sel').addEventListener('click', () => {
+  if(inPt>=outPt) return;
+  const pad=(outPt-inPt)*0.1;
+  vStart=Math.max(0,inPt-pad); vEnd=Math.min(vidDur,outPt+pad); drawTimeline();
+});
+
+// ═══════════════════════════════════════════════
+//  TIMELINE DRAWING
+// ═══════════════════════════════════════════════
+function resizeCanvas() {
+  canvas.width = canvas.parentElement.clientWidth;
+  canvas.height = canvas.clientHeight || 98;
+  drawTimeline();
+}
+window.addEventListener('resize', () => { if(video) resizeCanvas(); });
+
+function drawTimeline() {
+  if (!video) return;
+  const W = canvas.width, H = canvas.height;
+  const RULER_H = TL_RULER_H;
+  const stripY = RULER_H, stripH = H - RULER_H;
+
+  // Clear
+  ctx.clearRect(0, 0, W, H);
+
+  // BG
+  ctx.fillStyle = '#0c0c10';
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw thumbnails in strip
+  if (thumbnails.length > 0) {
+    for (let i = 0; i < thumbnails.length; i++) {
+      const t0 = thumbnails[i].time;
+      const t1 = i+1 < thumbnails.length ? thumbnails[i+1].time : vidDur;
+      const x0 = timeToX(t0), x1 = timeToX(t1);
+      if (x1 < 0 || x0 > W) continue;
+      const cx = Math.max(0, x0), cw = Math.min(W, x1) - cx;
+      if (cw <= 0) continue;
+      ctx.drawImage(thumbnails[i].bmp, cx, stripY, cw, stripH);
+    }
+  } else {
+    ctx.fillStyle = '#1a1a22';
+    ctx.fillRect(0, stripY, W, stripH);
+  }
+
+  // Darken outside selection
+  const inX = timeToX(inPt), outX = timeToX(outPt);
+  ctx.fillStyle = 'rgba(0,0,0,0.62)';
+  if (inX > 0) ctx.fillRect(0, stripY, inX, stripH);
+  if (outX < W) ctx.fillRect(outX, stripY, W - outX, stripH);
+
+  // Selection border glow
+  const selW = outX - inX;
+  if (selW > 2) {
+    ctx.strokeStyle = 'rgba(240,160,32,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(inX, stripY + 0.75, selW, stripH - 1.5);
+    // Top bar
+    ctx.fillStyle = 'rgba(240,160,32,0.15)';
+    ctx.fillRect(inX+1, stripY+1, selW-2, 4);
+  }
+
+  // Ruler BG — slightly distinct to signal "drag here for playhead"
+  ctx.fillStyle = '#13131a';
+  ctx.fillRect(0, 0, W, RULER_H);
+  // Subtle right-edge label
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.font = '8px IBM Plex Mono, monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('← 拖动播放头', W - 6, RULER_H - 4);
+  ctx.fillStyle = 'rgba(240,160,32,0.2)';
+  ctx.fillRect(Math.max(0,inX), 0, Math.min(W,outX)-Math.max(0,inX), RULER_H);
+
+  // Tick marks
+  const viewDur = vEnd - vStart;
+  const pps = W / viewDur;
+  let ti = 0.1;
+  for (const iv of [0.1,0.25,0.5,1,2,5,10,15,30,60,120,300]) {
+    if (iv * pps >= 55) { ti = iv; break; }
+    ti = iv;
+  }
+
+  ctx.font = '9px IBM Plex Mono, monospace';
+  ctx.textAlign = 'center';
+  const firstTick = Math.ceil(vStart / ti) * ti;
+  for (let t = firstTick; t <= vEnd + ti; t += ti) {
+    const x = timeToX(t);
+    if (x < -20 || x > W+20) continue;
+    ctx.fillStyle = '#3a3a4a';
+    ctx.fillRect(x, 0, 1, RULER_H - 8);
+    ctx.fillStyle = '#6a6a80';
+    ctx.fillText(fmtShort(t), x, RULER_H - 2);
+  }
+
+  // ── In Point Handle ──
+  drawHandle(inX, H, RULER_H, '#22d45e', '[', true);
+
+  // ── Out Point Handle ──
+  drawHandle(outX, H, RULER_H, '#ef4444', ']', false);
+
+  // ── Playhead: head in ruler zone, ghost line in strip ──
+  const px = timeToX(curTime);
+  if (px >= -1 && px <= W+1) {
+    // Ghost line through strip (behind in/out handles visually)
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(px, RULER_H); ctx.lineTo(px, H); ctx.stroke();
+    ctx.setLineDash([]);
+    // Solid line through ruler
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, RULER_H); ctx.stroke();
+    // Diamond head sits inside ruler — grab zone is here
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px, 3);
+    ctx.lineTo(px + 6, 10);
+    ctx.lineTo(px, 18);
+    ctx.lineTo(px - 6, 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+function drawHandle(x, H, rulerH, color, label, isIn) {
+  const W = canvas.width;
+  if (x < -20 || x > W+20) return;
+  // Vertical line: strip zone only (doesn't enter ruler → no overlap with playhead head)
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(x, rulerH); ctx.lineTo(x, H); ctx.stroke();
+  // Flag tab hanging from ruler bottom — this is where users grab the handle
+  const TW = 13, TH = 13;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  if (isIn) {
+    // Right-facing tab on right side of line
+    ctx.moveTo(x, rulerH);
+    ctx.lineTo(x + TW, rulerH);
+    ctx.lineTo(x + TW, rulerH + TH - 3);
+    ctx.lineTo(x, rulerH + TH);
+  } else {
+    // Left-facing tab on left side of line
+    ctx.moveTo(x, rulerH);
+    ctx.lineTo(x - TW, rulerH);
+    ctx.lineTo(x - TW, rulerH + TH - 3);
+    ctx.lineTo(x, rulerH + TH);
+  }
+  ctx.closePath(); ctx.fill();
+  // Label inside tab
+  ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  ctx.font = 'bold 9px IBM Plex Mono, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, isIn ? x + 6 : x - 6, rulerH + 9);
+}
+
+// ═══════════════════════════════════════════════
+//  TIMELINE INTERACTION
+// ═══════════════════════════════════════════════
+// Zone-based hit test: ruler zone (y < RULER_H) → playhead only
+//                      strip zone (y ≥ RULER_H) → in/out handles or pan
+// This prevents handles from ever overlapping in interaction space.
+const TL_RULER_H = 22;
+
+function hitTest(x, y) {
+  if (y < TL_RULER_H) return 'playhead';           // ruler → always playhead
+  const inX = timeToX(inPt), outX = timeToX(outPt);
+  if (Math.abs(x - inX) <= HANDLE_HIT) return 'in';
+  if (Math.abs(x - outX) <= HANDLE_HIT) return 'out';
+  return 'pan';
+}
+
+function setCursor(type, inRuler) {
+  if (inRuler) canvas.style.cursor = 'col-resize';
+  else canvas.style.cursor = type === 'pan' ? 'grab' : 'ew-resize';
+}
+
+let panOrigin = null; // {x, vS, vE}
+
+canvas.addEventListener('mousedown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const type = hitTest(x, y);
+  drag = { type, x, vS: vStart, vE: vEnd };
+
+  if (type === 'pan') {
+    canvas.style.cursor = 'grabbing';
+    const t = clamp(xToTime(x), 0, vidDur);
+    curTime = t; if(video) video.currentTime = t;
+    drawTimeline();
+  } else if (type === 'playhead') {
+    // Immediate seek on ruler click
+    const t = clamp(xToTime(x), 0, vidDur);
+    seekPreview(t);
+    drawTimeline();
+  }
+  e.preventDefault();
+});
+
+// Throttled seek: prevents queuing hundreds of seeks while dragging
+let seekPending = false;
+function seekPreview(t) {
+  if (!video) return;
+  t = clamp(t, 0, vidDur);
+  curTime = t;
+  if (!seekPending) {
+    seekPending = true;
+    video.currentTime = t;
+    // After the seek lands (or 80ms max), clear the flag
+    const clear = () => { seekPending = false; video.onseeked = null; };
+    video.onseeked = clear;
+    setTimeout(clear, 80);
+  }
+}
+
+window.addEventListener('mousemove', e => {
+  if (!drag) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if (x >= 0 && x <= canvas.width && y >= 0 && y <= canvas.height) {
+      setCursor(hitTest(x, y), y < TL_RULER_H);
+    }
+    return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const dx = x - drag.x;
+  const durV = drag.vE - drag.vS;
+  const dt = (dx / canvas.width) * durV;
+
+  if (drag.type === 'pan') {
+    const ns = clamp(drag.vS - dt, 0, vidDur - durV);
+    vStart = ns; vEnd = ns + durV;
+  } else if (drag.type === 'playhead') {
+    const t = clamp(xToTime(x), 0, vidDur);
+    seekPreview(t);
+  } else if (drag.type === 'in') {
+    inPt = clamp(xToTime(x), 0, outPt - 0.05);
+    seekPreview(inPt);   // ← 实时预览入点画面
+    updateUI();
+  } else if (drag.type === 'out') {
+    outPt = clamp(xToTime(x), inPt + 0.05, vidDur);
+    seekPreview(outPt);  // ← 实时预览出点画面
+    updateUI();
+  }
+  drawTimeline();
+});
+
+window.addEventListener('mouseup', () => {
+  drag = null;
+  canvas.style.cursor = 'crosshair';
+});
+
+// Wheel zoom (centered on mouse)
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const mt = xToTime(mx);
+  const factor = e.deltaY > 0 ? 1.25 : 0.8;
+  let newDur = clamp((vEnd - vStart) * factor, 0.2, vidDur);
+  const ratio = (mt - vStart) / (vEnd - vStart);
+  vStart = clamp(mt - ratio * newDur, 0, vidDur - newDur);
+  vEnd = vStart + newDur;
+  drawTimeline();
+}, { passive: false });
+
+// Touch support
+let touches = {};
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  if (e.touches.length === 1) {
+    const x = e.touches[0].clientX - rect.left;
+    const y = e.touches[0].clientY - rect.top;
+    drag = { type: hitTest(x, y), x, vS: vStart, vE: vEnd, id: e.touches[0].identifier };
+  } else if (e.touches.length === 2) {
+    drag = null;
+    touches.pinchDist = Math.abs(e.touches[0].clientX - e.touches[1].clientX);
+    touches.pinchVS = vStart; touches.pinchVE = vEnd;
+    touches.pinchMid = (e.touches[0].clientX + e.touches[1].clientX)/2 - rect.left;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  if (e.touches.length === 1 && drag) {
+    const x = e.touches[0].clientX - rect.left;
+    const dx = x - drag.x;
+    const durV = drag.vE - drag.vS;
+    const dt = (dx / canvas.width) * durV;
+    if (drag.type === 'pan') {
+      const ns = clamp(drag.vS - dt, 0, vidDur - durV);
+      vStart = ns; vEnd = ns + durV;
+    } else if (drag.type === 'playhead') {
+      curTime = clamp(xToTime(x),0,vidDur); if(video) video.currentTime=curTime;
+    } else if (drag.type === 'in') {
+      inPt = clamp(xToTime(x),0,outPt-0.05); seekPreview(inPt); updateUI();
+    } else if (drag.type === 'out') {
+      outPt = clamp(xToTime(x),inPt+0.05,vidDur); seekPreview(outPt); updateUI();
+    }
+  } else if (e.touches.length === 2 && touches.pinchDist) {
+    const d = Math.abs(e.touches[0].clientX - e.touches[1].clientX);
+    const factor = touches.pinchDist / d;
+    const mt = xToTime(touches.pinchMid);
+    let newDur = clamp((touches.pinchVE - touches.pinchVS) * factor, 0.2, vidDur);
+    const ratio = (mt - touches.pinchVS) / (touches.pinchVE - touches.pinchVS);
+    vStart = clamp(mt - ratio * newDur, 0, vidDur - newDur);
+    vEnd = vStart + newDur;
+  }
+  drawTimeline();
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => { e.preventDefault(); drag=null; touches={}; }, { passive:false });
+
+// ═══════════════════════════════════════════════
+//  UI STATE
+// ═══════════════════════════════════════════════
+function updateUI() {
+  document.getElementById('i-in').textContent = fmt(inPt);
+  document.getElementById('i-out').textContent = fmt(outPt);
+  const dur = outPt - inPt;
+  document.getElementById('i-sel').textContent = fmt(dur);
+  document.getElementById('sel-info').textContent = `选区 ${dur.toFixed(2)}s`;
+
+  const p = optimizeGif(dur, vidW, vidH);
+  document.getElementById('o-fps').textContent = p.fps + ' fps';
+  document.getElementById('o-dim').textContent = `${p.w} × ${p.h}`;
+  document.getElementById('o-frm').textContent = `${p.n} 帧`;
+}
+
+// ═══════════════════════════════════════════════
+//  GIF QUALITY OPTIMIZER
+// ═══════════════════════════════════════════════
+function optimizeGif(dur, srcW, srcH) {
+  // Target slightly under 10MB so encoding overhead keeps us safe
+  const TARGET = 9.0 * 1024 * 1024;
+  // GIF compressed bytes estimate: ~1.6 bytes/pixel/frame (includes palette, LZW)
+  const BPF = 1.6;
+  const aspect = srcW / srcH || 16/9;
+  const fpsCandidates = [15, 12, 10, 8, 6, 5, 4, 3];
+
+  for (const fps of fpsCandidates) {
+    const n = Math.ceil(dur * fps);
+    const pixBudget = TARGET / (n * BPF);
+    let h = Math.sqrt(pixBudget / aspect);
+    let w = h * aspect;
+    w = Math.min(srcW, Math.floor(w / 4) * 4);
+    h = Math.min(srcH, Math.floor(h / 4) * 4);
+    if (w >= 200 && h >= 100) return { fps, w, h, n };
+  }
+  const h = Math.floor(120 / 4) * 4;
+  return { fps: 3, w: Math.floor(h * aspect / 4)*4, h, n: Math.ceil(dur*3) };
+}
+
+// ═══════════════════════════════════════════════
+//  GIF EXPORT
+// ═══════════════════════════════════════════════
+let workerUrl = null;
+async function getWorkerUrl() {
+  if (workerUrl) return workerUrl;
+  try {
+    const r = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
+    const blob = await r.blob();
+    workerUrl = URL.createObjectURL(blob);
+  } catch(_) {
+    workerUrl = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js';
+  }
+  return workerUrl;
+}
+
+document.getElementById('btn-export').addEventListener('click', exportGif);
+
+async function exportGif() {
+  if (!video) return;
+  const dur = outPt - inPt;
+  if (dur <= 0.1) { alert('请设置有效的入点和出点'); return; }
+
+  const wasPlaying = !video.paused;
+  video.pause();
+  loopRange = false;
+  document.getElementById('btn-preview-range').classList.remove('active');
+  document.getElementById('range-badge').classList.remove('visible');
+
+  const btn = document.getElementById('btn-export');
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳</span> 处理中...';
+
+  const pw = document.getElementById('prog-wrap');
+  const pf = document.getElementById('prog-fill');
+  const pl = document.getElementById('prog-label');
+  pw.style.display = 'block';
+
+  const { fps, w, h, n } = optimizeGif(dur, vidW, vidH);
+  pl.textContent = `准备: ${w}×${h} @ ${fps}fps · ${n}帧`;
+
+  const ec = document.createElement('canvas');
+  ec.width = w; ec.height = h;
+  const ectx = ec.getContext('2d');
+
+  const wurl = await getWorkerUrl();
+  const gif = new GIF({ workers: 2, quality: 6, width: w, height: h, workerScript: wurl });
+
+  const delay = Math.round(1000 / fps);
+
+  for (let i = 0; i < n; i++) {
+    const t = inPt + i * (1/fps);
+    if (t > outPt + 0.001) break;
+    const pct = (i / n * 72).toFixed(0);
+    pf.style.width = pct + '%';
+    pl.textContent = `提取帧 ${i+1} / ${n}`;
+    await seekTo(video, clamp(t, 0, vidDur));
+    ectx.drawImage(video, 0, 0, w, h);
+    gif.addFrame(ec, { copy: true, delay });
+    await new Promise(r => setTimeout(r, 0));
+  }
+
+  pl.textContent = '编码 GIF...';
+  pf.style.width = '75%';
+
+  gif.on('progress', p => {
+    pf.style.width = (75 + p*24).toFixed(0) + '%';
+    pl.textContent = `编码中 ${(p*100).toFixed(0)}%`;
+  });
+
+  gif.on('finished', blob => {
+    pf.style.width = '100%';
+    const mb = (blob.size/1024/1024).toFixed(2);
+    pl.textContent = `✓ 完成！${mb} MB`;
+
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `gifstudio_${Date.now()}.gif`;
+    a.click();
+
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<span>⬇</span> 导出 GIF';
+      pw.style.display = 'none';
+      pf.style.width = '0';
+    }, 4000);
+
+    if (wasPlaying) video.play();
+  });
+
+  gif.on('error', err => {
+    alert('导出失败: ' + err);
+    btn.disabled = false;
+    btn.innerHTML = '<span>⬇</span> 导出 GIF';
+    pw.style.display = 'none';
+  });
+
+  gif.render();
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+resizeCanvas();
+</script>
+</body>
+</html>
